@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Son Topish O'yini</title>
+
+<!-- ✅ Telegram WebApp SDK - BU MUHIM! -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --card: #1a1a25;
+    --border: rgba(255,255,255,0.06);
+    --accent: #7c6aff;
+    --accent2: #ff6ab0;
+    --accent3: #6affd4;
+    --text: #f0f0f8;
+    --muted: #6b6b8a;
+    --success: #6affd4;
+    --warning: #ffd46a;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    /* Telegram safe area */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .bg-orbs { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+  .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.15; animation: drift 12s ease-in-out infinite; }
+  .orb1 { width: 500px; height: 500px; background: var(--accent); top: -150px; left: -150px; }
+  .orb2 { width: 400px; height: 400px; background: var(--accent2); bottom: -100px; right: -100px; animation-delay: -4s; }
+  .orb3 { width: 300px; height: 300px; background: var(--accent3); top: 50%; left: 50%; transform: translate(-50%,-50%); animation-delay: -8s; }
+
+  @keyframes drift {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    33% { transform: translate(30px,-30px) scale(1.05); }
+    66% { transform: translate(-20px,20px) scale(0.95); }
+  }
+
+  .grid-lines {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  .app { position: relative; z-index: 1; width: 100%; max-width: 480px; padding: 20px; }
+
+  .header { text-align: center; margin-bottom: 24px; animation: slideDown 0.6s cubic-bezier(0.34,1.56,0.64,1) both; }
+  .logo {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 10px;
+  }
+  .tg-user {
+    font-size: 13px; color: var(--muted); margin-top: 6px;
+  }
+  .tg-user span { color: var(--accent); font-weight: 500; }
+  h1 { font-family: 'Syne', sans-serif; font-size: clamp(22px,6vw,32px); font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; }
+  h1 span { color: var(--accent); }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 24px; padding: 28px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.02), 0 32px 64px rgba(0,0,0,0.4);
+    animation: slideUp 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.1s both;
+    position: relative; overflow: hidden;
+  }
+  .card::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(124,106,255,0.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .mode-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px; }
+  .mode-btn {
+    padding: 14px 10px; border: 1px solid var(--border); border-radius: 14px;
+    background: transparent; color: var(--muted);
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.25s ease; text-align: center; line-height: 1.4;
+  }
+  .mode-btn .icon { font-size: 22px; display: block; margin-bottom: 6px; }
+  .mode-btn:hover { border-color: var(--accent); color: var(--text); background: rgba(124,106,255,0.08); }
+  .mode-btn.active { border-color: var(--accent); background: rgba(124,106,255,0.15); color: var(--text); box-shadow: 0 0 20px rgba(124,106,255,0.2); }
+
+  .divider { height: 1px; background: var(--border); margin-bottom: 24px; }
+
+  #game-area { display: none; }
+  #game-area.active { display: block; animation: fadeIn 0.4s ease both; }
+
+  .number-display { text-align: center; margin-bottom: 24px; }
+  .number-label { font-size: 11px; font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .big-number {
+    font-family: 'Syne', sans-serif; font-size: clamp(50px,14vw,72px); font-weight: 800; line-height: 1;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+  .range-hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .range-hint b { color: var(--accent); font-weight: 500; }
+
+  .status-msg {
+    text-align: center; padding: 12px 16px; border-radius: 12px;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    font-size: 14px; color: var(--muted); margin-bottom: 20px; min-height: 46px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;
+  }
+  .status-msg.success { color: var(--success); border-color: rgba(106,255,212,0.2); background: rgba(106,255,212,0.06); }
+  .status-msg.hint { color: var(--warning); border-color: rgba(255,212,106,0.2); background: rgba(255,212,106,0.06); }
+
+  .attempt-badge {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px;
+    border-radius: 100px; background: rgba(124,106,255,0.1); border: 1px solid rgba(124,106,255,0.2);
+    font-size: 12px; color: var(--accent); font-weight: 500; margin-bottom: 20px;
+  }
+  .attempt-dots { display: flex; gap: 3px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); opacity: 0.3; transition: opacity 0.3s ease; }
+  .dot.filled { opacity: 1; }
+
+  .btn-group { display: grid; gap: 10px; margin-bottom: 12px; }
+  .btn-group.three { grid-template-columns: 1fr 1fr 1fr; }
+  .btn-group.one { grid-template-columns: 1fr; }
+
+  .btn {
+    padding: 14px 20px; border-radius: 14px; border: none;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+    position: relative; overflow: hidden;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn-up { background: rgba(106,255,212,0.1); color: var(--success); border: 1px solid rgba(106,255,212,0.2); }
+  .btn-up:hover { background: rgba(106,255,212,0.18); transform: translateY(-2px); }
+  .btn-down { background: rgba(255,106,176,0.1); color: var(--accent2); border: 1px solid rgba(255,106,176,0.2); }
+  .btn-down:hover { background: rgba(255,106,176,0.18); transform: translateY(-2px); }
+  .btn-found { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; }
+  .btn-found:hover { box-shadow: 0 8px 24px rgba(124,106,255,0.4); transform: translateY(-2px); }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), #5a4aff); color: white; padding: 16px; font-size: 15px; font-weight: 600; }
+  .btn-primary:hover { box-shadow: 0 8px 30px rgba(124,106,255,0.4); transform: translateY(-2px); }
+  .btn-ghost { background: rgba(255,255,255,0.04); color: var(--muted); border: 1px solid var(--border); padding: 12px; font-size: 13px; }
+  .btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+
+  .input-group { margin-bottom: 12px; }
+  .game-input {
+    width: 100%; padding: 16px 20px; border-radius: 14px; border: 1px solid var(--border);
+    background: rgba(255,255,255,0.04); color: var(--text);
+    font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 700;
+    text-align: center; outline: none; transition: all 0.25s ease; -moz-appearance: textfield;
+  }
+  .game-input::-webkit-inner-spin-button, .game-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .game-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,106,255,0.15); }
+  .game-input::placeholder { color: var(--muted); font-size: 16px; font-family: 'DM Sans', sans-serif; font-weight: 400; }
+
+  .select-prompt { text-align: center; padding: 20px 0 8px; color: var(--muted); font-size: 14px; animation: fadeIn 0.4s ease; }
+
+  .particle { position: fixed; pointer-events: none; z-index: 999; border-radius: 2px; animation: fall 1.5s ease-in forwards; }
+  @keyframes fall { 0% { transform: translateY(-20px) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+  @keyframes slideDown { from { opacity:0; transform:translateY(-30px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes slideUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  @keyframes popIn { from { opacity:0; transform:scale(0.7); } to { opacity:1; transform:scale(1); } }
+  @keyframes shake { 0%,100%{transform:translateX(0);} 20%,60%{transform:translateX(-8px);} 40%,80%{transform:translateX(8px);} }
+  .shake { animation: shake 0.4s ease; }
+
+  @media (max-width: 480px) {
+    .card { padding: 20px 16px; border-radius: 20px; }
+    .btn-group.three { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-orbs">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+</div>
+<div class="grid-lines"></div>
+
+<div class="app">
+  <div class="header">
+    <div class="logo">🎮 O'yin Markazi</div>
+    <h1>Son <span>Topish</span><br>O'yini</h1>
+    <!-- Telegram foydalanuvchi ismi ko'rsatiladi -->
+    <div class="tg-user" id="tg-user-info"></div>
+  </div>
+
+  <div class="card">
+    <div class="mode-selector">
+      <button class="mode-btn" id="mode1-btn" onclick="selectMode(1)">
+        <span class="icon">🤖</span>
+        <strong>Kompyuter topadi</strong><br>
+        <small>Sen o'ylaysan</small>
+      </button>
+      <button class="mode-btn" id="mode2-btn" onclick="selectMode(2)">
+        <span class="icon">🧠</span>
+        <strong>Sen topasan</strong><br>
+        <small>Kompyuter o'ylaydi</small>
+      </button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div id="game-area">
+      <!-- Mode 1 -->
+      <div id="mode1-game" style="display:none;">
+        <div class="number-display">
+          <div class="number-label">Mening taxminim</div>
+          <div class="big-number" id="comp-guess">—</div>
+          <div class="range-hint">Oraliq: <b id="range-low">1</b> — <b id="range-high">100</b></div>
+        </div>
+        <div class="attempt-badge">
+          <span>Urinish:</span> <span id="attempt-count-1">0</span>
+          <div class="attempt-dots" id="dots-1"></div>
+        </div>
+        <div class="status-msg" id="status-1">1 dan 100 gacha son o'ylang!</div>
+        <div class="btn-group three" id="guess-btns">
+          <button class="btn btn-up" onclick="feedback('higher')">⬆️ Katta</button>
+          <button class="btn btn-down" onclick="feedback('lower')">⬇️ Kichik</button>
+          <button class="btn btn-found" onclick="feedback('found')">✓ Topding!</button>
+        </div>
+        <div class="btn-group one">
+          <button class="btn btn-ghost" onclick="restartMode1()">↺ Qayta boshlash</button>
+        </div>
+      </div>
+
+      <!-- Mode 2 -->
+      <div id="mode2-game" style="display:none;">
+        <div class="number-display">
+          <div class="number-label">Men o'yladim...</div>
+          <div class="big-number">🎯</div>
+        </div>
+        <div class="attempt-badge">
+          <span>Urinish:</span> <span id="attempt-count-2">0</span>
+          <div class="attempt-dots" id="dots-2"></div>
+        </div>
+        <div class="status-msg" id="status-2">1 dan 100 gacha son kiriting!</div>
+        <div class="input-group">
+          <input type="number" class="game-input" id="user-input"
+            placeholder="Sonni kiriting..." min="1" max="100"
+            onkeydown="if(event.key==='Enter') checkGuess()">
+        </div>
+        <div class="btn-group one">
+          <button class="btn btn-primary" onclick="checkGuess()">Tekshirish →</button>
+        </div>
+        <div class="btn-group one">
+          <button class="btn btn-ghost" onclick="restartMode2()">↺ Qayta boshlash</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="select-prompt" id="select-prompt">☝️ Yuqoridan o'yin rejimini tanlang</div>
+  </div>
+</div>
+
+<script>
+// ============================================
+// ✅ TELEGRAM WEBAPP INIT
+// ============================================
+const tg = window.Telegram?.WebApp;
+
+if (tg) {
+  tg.ready();                          // Telegram ga tayyor ekanligini ayt
+  tg.expand();                         // To'liq ekranga kengaytir
+  tg.setHeaderColor('#0a0a0f');        // Header rangini o'rnatish
+  tg.setBackgroundColor('#0a0a0f');    // Background rangi
+
+  // Foydalanuvchi ismini ko'rsatish
+  const user = tg.initDataUnsafe?.user;
+  if (user) {
+    const name = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+    document.getElementById('tg-user-info').innerHTML =
+      `Salom, <span>@${user.username || name}</span>! 👋`;
+  }
+}
+
+// ============================================
+// O'YIN LOGIKASI
+// ============================================
+let mode = 0, low = 1, high = 100, attempts1 = 0, attempts2 = 0;
+let compNum = 0, secretNum = 0, gameOver = false;
+
+function selectMode(m) {
+  mode = m;
+  document.getElementById('mode1-btn').classList.toggle('active', m === 1);
+  document.getElementById('mode2-btn').classList.toggle('active', m === 2);
+  document.getElementById('select-prompt').style.display = 'none';
+  document.getElementById('game-area').classList.add('active');
+  document.getElementById('mode1-game').style.display = m === 1 ? 'block' : 'none';
+  document.getElementById('mode2-game').style.display = m === 2 ? 'block' : 'none';
+  if (m === 1) initMode1(); else initMode2();
+  // Telegram haptic feedback
+  tg?.HapticFeedback?.impactOccurred('medium');
+}
+
+function initMode1() {
+  low = 1; high = 100; attempts1 = 0; gameOver = false;
+  compNum = Math.ceil((low + high) / 2);
+  updateGuessDisplay();
+  setStatus('status-1', '1 dan 100 gacha son o\'ylang va boshlang!', '');
+  updateDots('dots-1', 0);
+  document.getElementById('attempt-count-1').textContent = 0;
+  document.getElementById('guess-btns').style.opacity = '1';
+  document.getElementById('guess-btns').style.pointerEvents = 'auto';
+}
+
+function updateGuessDisplay() {
+  const el = document.getElementById('comp-guess');
+  el.style.animation = 'none'; el.offsetHeight;
+  el.style.animation = 'popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both';
+  el.textContent = compNum;
+  document.getElementById('range-low').textContent = low;
+  document.getElementById('range-high').textContent = high;
+}
+
+function feedback(type) {
+  if (gameOver) return;
+  tg?.HapticFeedback?.impactOccurred('light');
+  attempts1++;
+  document.getElementById('attempt-count-1').textContent = attempts1;
+  updateDots('dots-1', attempts1);
+
+  if (type === 'found') {
+    gameOver = true;
+    setStatus('status-1', `🎉 ${attempts1}-urinishda topdim! Son: ${compNum}`, 'success');
+    document.getElementById('guess-btns').style.opacity = '0.4';
+    document.getElementById('guess-btns').style.pointerEvents = 'none';
+    tg?.HapticFeedback?.notificationOccurred('success');
+    launchConfetti();
+    return;
+  }
+  if (type === 'higher') { low = compNum + 1; setStatus('status-1', `Demak ${compNum} dan katta...`, 'hint'); }
+  else { high = compNum - 1; setStatus('status-1', `Demak ${compNum} dan kichik...`, 'hint'); }
+  if (low > high) { setStatus('status-1', '❌ O\'yin buzildi! Qayta boshlang.', ''); return; }
+  compNum = Math.floor((low + high) / 2);
+  setTimeout(updateGuessDisplay, 200);
+}
+
+function restartMode1() { initMode1(); tg?.HapticFeedback?.impactOccurred('soft'); }
+
+function initMode2() {
+  secretNum = Math.floor(Math.random() * 100) + 1;
+  attempts2 = 0; gameOver = false;
+  setStatus('status-2', '1 dan 100 gacha son kiriting!', '');
+  document.getElementById('user-input').value = '';
+  document.getElementById('user-input').disabled = false;
+  document.getElementById('attempt-count-2').textContent = 0;
+  updateDots('dots-2', 0);
+  setTimeout(() => document.getElementById('user-input').focus(), 300);
+}
+
+function checkGuess() {
+  if (gameOver) return;
+  const input = document.getElementById('user-input');
+  const val = parseInt(input.value);
+  if (isNaN(val) || val < 1 || val > 100) {
+    input.classList.add('shake');
+    setTimeout(() => input.classList.remove('shake'), 400);
+    setStatus('status-2', '⚠️ 1 dan 100 gacha son kiriting!', 'hint');
+    tg?.HapticFeedback?.notificationOccurred('error');
+    return;
+  }
+  attempts2++;
+  document.getElementById('attempt-count-2').textContent = attempts2;
+  updateDots('dots-2', attempts2);
+  tg?.HapticFeedback?.impactOccurred('light');
+
+  if (val === secretNum) {
+    gameOver = true;
+    setStatus('status-2', `🎉 Ajoyib! ${attempts2}-urinishda topdingiz!`, 'success');
+    input.disabled = true;
+    tg?.HapticFeedback?.notificationOccurred('success');
+    launchConfetti();
+  } else if (val < secretNum) {
+    setStatus('status-2', `⬆️ Kattaroq son kiriting! (${val} dan katta)`, 'hint');
+  } else {
+    setStatus('status-2', `⬇️ Kichikroq son kiriting! (${val} dan kichik)`, 'hint');
+  }
+  input.value = '';
+  if (!gameOver) input.focus();
+}
+
+function restartMode2() { initMode2(); tg?.HapticFeedback?.impactOccurred('soft'); }
+
+function setStatus(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'status-msg' + (type ? ' ' + type : '');
+}
+
+function updateDots(containerId, count) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  const max = 7;
+  for (let i = 0; i < Math.min(count, max); i++) {
+    const d = document.createElement('div');
+    d.className = 'dot filled';
+    container.appendChild(d);
+  }
+}
+
+function launchConfetti() {
+  const colors = ['#7c6aff','#ff6ab0','#6affd4','#ffd46a','#fff','#a78bfa'];
+  for (let i = 0; i < 60; i++) {
+    setTimeout(() => {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.cssText = `left:${Math.random()*100}vw;top:-10px;background:${colors[Math.floor(Math.random()*colors.length)]};width:${Math.random()*8+4}px;height:${Math.random()*8+4}px;border-radius:${Math.random()>0.5?'50%':'2px'};animation-duration:${Math.random()*1+1}s;animation-delay:${Math.random()*0.5}s;`;
+      document.body.appendChild(p);
+      setTimeout(() => p.remove(), 2500);
+    }, i * 20);
+  }
+}
+</script>
+</body>
+</html>
